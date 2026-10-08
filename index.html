@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>M&S Retailers Uganda — ERP Prototype</title>
+<style>
+:root{--bg:#f5f4ef;--card:#fff;--tx:#1b221e;--mu:#68716b;--bd:#e0ded5;--ac:#0f6b4f;--acx:#fff;--hi:#fcd116;--bad:#b3261e;--soft:#eef4f0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121613;--card:#1c221e;--tx:#e8ece9;--mu:#9aa59e;--bd:#2d362f;--ac:#3fbf8f;--acx:#0b1410;--bad:#ff8a80;--soft:#18201b}}
+:root[data-theme="dark"]{--bg:#121613;--card:#1c221e;--tx:#e8ece9;--mu:#9aa59e;--bd:#2d362f;--ac:#3fbf8f;--acx:#0b1410;--bad:#ff8a80;--soft:#18201b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:14px 16px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{width:34px;height:34px;border-radius:8px;background:var(--ac);color:var(--acx);display:grid;place-items:center;font-weight:800;border-bottom:4px solid var(--hi)}
+h1{font-size:17px;margin:0}h1 small{display:block;font-weight:400;color:var(--mu);font-size:12px}
+nav{display:flex;gap:6px;padding:12px 16px;overflow-x:auto}
+nav button{border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:20px;cursor:pointer;white-space:nowrap;font:inherit}
+nav button.on{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+main{padding:0 16px 40px;max-width:1100px;margin:0 auto}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.g2{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));margin-top:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px}
+.card h3{margin:0 0 10px;font-size:14px}
+.k{font-size:12px;color:var(--mu)}.v{font-size:19px;font-weight:700;margin-top:2px}
+table{width:100%;border-collapse:collapse}th,td{padding:7px 8px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mu)}td.r,th.r{text-align:right}
+.tw{overflow-x:auto}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:6px}
+label{display:flex;flex-direction:column;font-size:11px;color:var(--mu);gap:3px}
+input,select{padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit;min-width:0;max-width:100%}
+button.b{background:var(--ac);color:var(--acx);border:0;padding:9px 14px;border-radius:8px;cursor:pointer;font:inherit;font-weight:600}
+button.b.s{background:var(--soft);color:var(--ac);border:1px solid var(--bd)}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:var(--soft);color:var(--ac)}
+.tag.bad{background:#b3261e22;color:var(--bad)}
+.bar{height:8px;background:var(--ac);border-radius:4px;min-width:2px}
+.flow{display:grid;gap:6px;font-size:13px}.flow div{padding:8px 10px;background:var(--soft);border-radius:8px}
+#msg{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;margin:0 16px;padding:0}
+#msg div{background:var(--ac);color:var(--acx);padding:9px 12px;border-radius:8px;margin-bottom:8px}
+.mu{color:var(--mu)}.bad{color:var(--bad)}
+</style></head><body>
+<header><div class="logo">M&amp;S</div><h1>M&amp;S Retailers Uganda<small>ERP prototype · Finance + Inventory + HRM · all amounts in UGX</small></h1>
+<span style="flex:1"></span><button class="b s" onclick="resetAll()">Reset demo data</button></header>
+<nav id="nav"></nav><div id="msg"></div><main id="app"></main>
+<script>
+const $=s=>document.querySelector(s),fmt=n=>'UGX '+Math.round(n).toLocaleString('en-UG'),num=id=>parseFloat($('#'+id).value)||0;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today=()=>new Date().toISOString().slice(0,10),VAT=.18;
+const ACC={1000:'Cash & Mobile Money',1200:'Inventory',2000:'VAT Payable (URA)',2100:'PAYE Payable (URA)',2200:'NSSF Payable',3000:"Owner's Equity",4000:'Sales Revenue',5000:'Cost of Goods Sold',6000:'Salaries & Wages',6100:'NSSF Employer Contribution',6200:'Rent, Utilities & Other'};
+const TABS={dash:'Dashboard',inv:'Inventory',sales:'Sales (POS)',fin:'Finance',hr:'HR & Payroll'};
+let S,cart=[],tab='dash',KEY='ms_erp_ug_v2';
+function seed(){
+ S={uid:100,products:[
+ {id:1,name:'Sugar 1kg',cost:4200,price:5000,stock:120,reorder:40,vat:true},
+ {id:2,name:'Cooking Oil 3L',cost:24000,price:28500,stock:60,reorder:20,vat:true},
+ {id:3,name:'Rice 5kg',cost:17000,price:20000,stock:45,reorder:20,vat:false},
+ {id:4,name:'Maize Flour 2kg',cost:5200,price:6500,stock:90,reorder:30,vat:false},
+ {id:5,name:'Bar Soap (single)',cost:1800,price:2500,stock:150,reorder:50,vat:true},
+ {id:6,name:'Mineral Water 1.5L',cost:1300,price:2000,stock:14,reorder:30,vat:true},
+ {id:7,name:'Exercise Book 96pg',cost:1200,price:2000,stock:200,reorder:60,vat:true}],
+ emps:[{id:1,name:'Male Steven',role:'Store Manager',branch:'Entebbe',gross:1800000},{id:2,name:'Ssenimiro Devislister',role:'Cashier',branch:'Entebbe',gross:650000},{id:3,name:'Nakidhuli Alice',role:'Cashier',branch:'Entebbe',gross:600000},{id:4,name:'Wassanyi Marvin',role:'Stock Clerk',branch:'Entebbe',gross:520000},{id:5,name:'Arahenda Beatrice',role:'Accountant',branch:'Entebbe',gross:1400000}],
+ journal:[],sales:[],payrolls:[]};
+ const inv=S.products.reduce((a,p)=>a+p.stock*p.cost,0);
+ post('Opening balances',[[1000,20000000,0],[1200,inv,0],[3000,0,20000000+inv]]);
+}
+function load(){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}if(!S)seed()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function resetAll(){if(!confirm('Reset all demo data?'))return;try{localStorage.removeItem(KEY)}catch(e){}seed();cart=[];msg('Demo data reset');render()}
+function msg(t){$('#msg').innerHTML='<div>'+esc(t)+'</div>';setTimeout(()=>$('#msg').innerHTML='',3500)}
+// ---- Finance engine: every module posts balanced double-entry journals ----
+function post(desc,lines,mod){const dr=lines.reduce((a,l)=>a+l[1],0),cr=lines.reduce((a,l)=>a+l[2],0);
+ if(Math.abs(dr-cr)>1)throw new Error('Unbalanced journal');
+ S.journal.unshift({id:S.journal.length+1,date:today(),desc,mod:mod||'Finance',lines:lines.filter(l=>l[1]||l[2])})}
+const bal=a=>S.journal.reduce((s,j)=>s+j.lines.filter(l=>l[0]==a).reduce((t,l)=>t+l[1]-l[2],0),0);
+function pl(){const rev=-bal(4000),cogs=bal(5000),exp=bal(6000)+bal(6100)+bal(6200);return{rev,cogs,gp:rev-cogs,exp,np:rev-cogs-exp}}
+// ---- Inventory <-> Finance ----
+function receive(){const p=S.products.find(x=>x.id==$('#rp').value),q=num('rq'),c=num('rc');
+ if(!p||q<=0||c<=0)return msg('Enter quantity and unit cost');
+ p.cost=(p.stock*p.cost+q*c)/(p.stock+q);p.stock+=q;
+ post('Stock received: '+q+' × '+p.name,[[1200,q*c,0],[1000,0,q*c]],'Inventory');msg('Stock received & ledger updated');render()}
+function addProduct(){const n=$('#pn').value.trim();if(!n)return msg('Name required');
+ S.products.push({id:++S.uid,name:n,cost:num('pc'),price:num('pp'),stock:0,reorder:num('pr'),vat:$('#pv').value=='1'});msg('Product added');render()}
+// ---- Sales (POS) <-> Inventory <-> Finance ----
+function addCart(){const p=S.products.find(x=>x.id==$('#sp').value),q=num('sq');if(!p||q<=0)return;
+ const inCart=cart.filter(c=>c.id==p.id).reduce((a,c)=>a+c.q,0);
+ if(inCart+q>p.stock)return msg('Only '+(p.stock-inCart)+' in stock for '+p.name);
+ const ex=cart.find(c=>c.id==p.id);ex?ex.q+=q:cart.push({id:p.id,q});render()}
+function totals(){let gross=0,net=0,vat=0,cogs=0;cart.forEach(c=>{const p=S.products.find(x=>x.id==c.id),g=p.price*c.q,n=p.vat?g/(1+VAT):g;gross+=g;net+=n;vat+=g-n;cogs+=p.cost*c.q});return{gross,net,vat,cogs}}
+function checkout(){if(!cart.length)return;const t=totals(),m=$('#pm').value;
+ cart.forEach(c=>{S.products.find(x=>x.id==c.id).stock-=c.q});
+ const no='RCPT-'+String(S.sales.length+1).padStart(4,'0');
+ S.sales.unshift({no,date:today(),method:m,total:t.gross,items:cart.map(c=>({id:c.id,q:c.q}))});
+ post(no+' sale via '+m,[[1000,t.gross,0],[4000,0,t.net],[2000,0,t.vat],[5000,t.cogs,0],[1200,0,t.cogs]],'Sales');
+ cart=[];msg(no+' completed · stock reduced · revenue, VAT & COGS posted');render()}
+// ---- HRM <-> Finance (Uganda statutory: PAYE bands, NSSF 5% + 10%) ----
+function paye(g){let t=0;if(g>410000)t=25000+(g-410000)*.3;else if(g>335000)t=10000+(g-335000)*.2;else if(g>235000)t=(g-235000)*.1;if(g>10000000)t+=(g-10000000)*.1;return Math.round(t)}
+function addEmp(){const n=$('#en').value.trim();if(!n||num('eg')<=0)return msg('Name and salary required');
+ S.emps.push({id:++S.uid,name:n,role:$('#er').value||'Staff',branch:$('#eb').value,gross:num('eg')});msg('Employee added');render()}
+function delEmp(id){S.emps=S.emps.filter(e=>e.id!=id);render()}
+function runPayroll(){const m=$('#pmn').value;if(!m)return;if(S.payrolls.some(p=>p.month==m))return msg('Payroll for '+m+' already posted');
+ const slips=S.emps.map(e=>{const g=e.gross,py=paye(g),ne=Math.round(g*.05),nr=Math.round(g*.1);return{name:e.name,gross:g,paye:py,nssfE:ne,nssfR:nr,net:g-py-ne}});
+ const T=k=>slips.reduce((a,s)=>a+s[k],0);
+ post('Payroll '+m,[[6000,T('gross'),0],[6100,T('nssfR'),0],[2100,0,T('paye')],[2200,0,T('nssfE')+T('nssfR')],[1000,0,T('net')]],'HRM');
+ S.payrolls.unshift({month:m,slips});msg('Payroll '+m+' posted to ledger');render()}
+function remit(a){const b=-bal(a);if(b<=0)return msg('Nothing to remit');post('Remittance: '+ACC[a],[[a,b,0],[1000,0,b]],'Finance');msg('Remitted '+fmt(b));render()}
+function addExp(){const a=num('xa');if(a<=0)return msg('Enter an amount');post($('#xd').value||'Operating expense',[[6200,a,0],[1000,0,a]],'Finance');msg('Expense posted');render()}
+// ---- Views ----
+const tbl=(h,rows,rc)=>'<div class="tw"><table><tr>'+h.map((x,i)=>'<th class="'+((rc||[]).includes(i)?'r':'')+'">'+x+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+r.map((x,i)=>'<td class="'+((rc||[]).includes(i)?'r':'')+'">'+x+'</td>').join('')+'</tr>').join('')+'</table></div>';
+const kpi=(k,v,c)=>'<div class="card"><div class="k">'+k+'</div><div class="v '+(c||'')+'">'+v+'</div></div>';
+const opts=l=>l.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
+const low=()=>S.products.filter(p=>p.stock<=p.reorder);
+function dash(){const r=pl(),by={};S.sales.forEach(s=>s.items.forEach(i=>by[i.id]=(by[i.id]||0)+i.q));
+ const top=S.products.map(p=>({n:p.name,q:by[p.id]||0})).sort((a,b)=>b.q-a.q),mx=Math.max(1,top[0].q);
+ return '<div class="grid">'+kpi('Cash & Mobile Money',fmt(bal(1000)))+kpi('Inventory value',fmt(bal(1200)))+kpi('Revenue (net of VAT)',fmt(r.rev))+kpi('Net profit',fmt(r.np),r.np<0?'bad':'')+kpi('VAT payable',fmt(-bal(2000)))+kpi('Low-stock items',low().length,low().length?'bad':'')+kpi('Headcount',S.emps.length)+kpi('Monthly payroll (gross)',fmt(S.emps.reduce((a,e)=>a+e.gross,0)))+'</div>'+
+ '<div class="g2"><div class="card"><h3>How the modules talk to each other</h3><div class="flow"><div><b>Sale</b> → Inventory −stock · Finance: Dr Cash, Cr Revenue + VAT, Dr COGS / Cr Inventory</div><div><b>Stock received</b> → Inventory +stock (weighted-avg cost) · Finance: Dr Inventory, Cr Cash</div><div><b>Payroll</b> → HRM computes PAYE &amp; NSSF · Finance: Dr Salaries + NSSF employer, Cr PAYE, NSSF, Cash</div></div></div>'+
+ '<div class="card"><h3>Units sold by product</h3>'+(S.sales.length?top.map(t=>'<div style="margin:6px 0"><div style="display:flex;justify-content:space-between"><span>'+esc(t.n)+'</span><span class="mu">'+t.q+'</span></div><div class="bar" style="width:'+t.q/mx*100+'%"></div></div>').join(''):'<p class="mu">No sales yet — ring one up in Sales (POS).</p>')+'</div>'+
+ '<div class="card"><h3>Reorder alerts</h3>'+(low().length?low().map(p=>'<div>⚠ '+esc(p.name)+' <span class="tag bad">'+p.stock+' left</span> <span class="mu">(reorder at '+p.reorder+')</span></div>').join(''):'<span class="mu">All stock levels healthy.</span>')+'</div>'+
+ '<div class="card"><h3>Latest ledger activity</h3>'+tbl(['Date','Source','Entry'],S.journal.slice(0,6).map(j=>[j.date,'<span class="tag">'+j.mod+'</span>',esc(j.desc)]))+'</div></div>'}
+function inv(){return '<div class="card" style="margin-top:12px"><h3>Stock on hand</h3>'+tbl(['Product','Cost (avg)','Price','VAT','On hand','Stock value','Status'],S.products.map(p=>[esc(p.name),fmt(p.cost),fmt(p.price),p.vat?'18%':'Exempt',p.stock,fmt(p.stock*p.cost),p.stock<=p.reorder?'<span class="tag bad">Reorder</span>':'<span class="tag">OK</span>']),[1,2,4,5])+'</div>'+
+ '<div class="g2"><div class="card"><h3>Receive stock (posts to Finance)</h3><div class="row"><label>Product<select id="rp">'+opts(S.products)+'</select></label><label>Qty<input id="rq" type="number" min="1" style="width:80px"></label><label>Unit cost<input id="rc" type="number" min="1" style="width:110px"></label><button class="b" onclick="receive()">Receive</button></div></div>'+
+ '<div class="card"><h3>New product</h3><div class="row"><label>Name<input id="pn"></label><label>Cost<input id="pc" type="number" style="width:90px"></label><label>Price<input id="pp" type="number" style="width:90px"></label><label>Reorder at<input id="pr" type="number" style="width:80px" value="20"></label><label>VAT<select id="pv"><option value="1">18%</option><option value="0">Exempt</option></select></label><button class="b" onclick="addProduct()">Add</button></div></div></div>'}
+function sales(){const t=totals();
+ return '<div class="g2"><div class="card"><h3>Point of sale</h3><div class="row"><label>Product<select id="sp">'+S.products.map(p=>'<option value="'+p.id+'">'+esc(p.name)+' — '+fmt(p.price)+' ('+p.stock+')</option>').join('')+'</select></label><label>Qty<input id="sq" type="number" min="1" value="1" style="width:70px"></label><button class="b" onclick="addCart()">Add</button></div>'+
+ (cart.length?tbl(['Item','Qty','Amount'],cart.map(c=>{const p=S.products.find(x=>x.id==c.id);return[esc(p.name),c.q,fmt(p.price*c.q)]}),[1,2]):'<p class="mu">Cart is empty.</p>')+
+ '<p>Subtotal ex-VAT: '+fmt(t.net)+'<br>VAT 18%: '+fmt(t.vat)+'<br><b style="font-size:17px">Total: '+fmt(t.gross)+'</b></p><div class="row"><label>Payment<select id="pm"><option>Cash</option><option>MTN MoMo</option><option>Airtel Money</option><option>Card</option></select></label><button class="b" onclick="checkout()">Complete sale</button><button class="b s" onclick="cart=[];render()">Clear</button></div></div>'+
+ '<div class="card"><h3>Recent sales</h3>'+(S.sales.length?tbl(['Receipt','Date','Method','Total'],S.sales.slice(0,10).map(s=>[s.no,s.date,s.method,fmt(s.total)]),[3]):'<p class="mu">No sales yet.</p>')+'</div></div>'}
+function fin(){const r=pl(),ids=Object.keys(ACC),tb=ids.map(a=>{const b=bal(a);return[a,ACC[a],b>0?fmt(b):'',b<0?fmt(-b):'']}),
+ A=bal(1000)+bal(1200),L=-(bal(2000)+bal(2100)+bal(2200)),E=-bal(3000);
+ return '<div class="grid" style="margin-top:12px">'+kpi('Revenue',fmt(r.rev))+kpi('Gross profit',fmt(r.gp))+kpi('Operating expenses',fmt(r.exp))+kpi('Net profit',fmt(r.np),r.np<0?'bad':'')+'</div>'+
+ '<div class="g2"><div class="card"><h3>Profit &amp; loss</h3>'+tbl(['Line','Amount'],[['Sales revenue',fmt(r.rev)],['Cost of goods sold','('+fmt(r.cogs)+')'],['<b>Gross profit</b>','<b>'+fmt(r.gp)+'</b>'],['Salaries &amp; wages','('+fmt(bal(6000))+')'],['NSSF employer','('+fmt(bal(6100))+')'],['Rent, utilities &amp; other','('+fmt(bal(6200))+')'],['<b>Net profit</b>','<b>'+fmt(r.np)+'</b>']],[1])+'</div>'+
+ '<div class="card"><h3>Balance sheet</h3>'+tbl(['Line','Amount'],[['Cash &amp; mobile money',fmt(bal(1000))],['Inventory',fmt(bal(1200))],['<b>Total assets</b>','<b>'+fmt(A)+'</b>'],['VAT payable',fmt(-bal(2000))],['PAYE payable',fmt(-bal(2100))],['NSSF payable',fmt(-bal(2200))],["Equity + retained profit",fmt(E+r.np)],['<b>Liabilities + equity</b>','<b>'+fmt(L+E+r.np)+'</b>']],[1])+'<p class="k">'+(Math.abs(A-L-E-r.np)<2?'✓ Books balance':'✗ Out of balance')+'</p></div>'+
+ '<div class="card"><h3>Remit statutory liabilities</h3><div class="row"><button class="b s" onclick="remit(2000)">Pay VAT '+fmt(-bal(2000))+'</button><button class="b s" onclick="remit(2100)">Pay PAYE '+fmt(-bal(2100))+'</button><button class="b s" onclick="remit(2200)">Pay NSSF '+fmt(-bal(2200))+'</button></div><h3 style="margin-top:14px">Record expense</h3><div class="row"><label>Description<input id="xd" placeholder="e.g. UMEME bill"></label><label>Amount<input id="xa" type="number" style="width:120px"></label><button class="b" onclick="addExp()">Post</button></div></div>'+
+ '<div class="card"><h3>Trial balance</h3>'+tbl(['Code','Account','Debit','Credit'],tb,[2,3])+'</div></div>'+
+ '<div class="card" style="margin-top:12px"><h3>General journal (latest 15)</h3>'+tbl(['#','Date','Source','Description','Dr','Cr'],S.journal.slice(0,15).map(j=>[j.id,j.date,j.mod,esc(j.desc),fmt(j.lines.reduce((a,l)=>a+l[1],0)),fmt(j.lines.reduce((a,l)=>a+l[2],0))]),[4,5])+'</div>'}
+function hr(){const pr=S.payrolls[0],m=today().slice(0,7);
+ return '<div class="card" style="margin-top:12px"><h3>Employees</h3>'+tbl(['Name','Role','Branch','Gross / month','PAYE','NSSF (5%)','Net pay',''],S.emps.map(e=>[esc(e.name),esc(e.role),esc(e.branch),fmt(e.gross),fmt(paye(e.gross)),fmt(e.gross*.05),fmt(e.gross-paye(e.gross)-Math.round(e.gross*.05)),'<button class="b s" onclick="delEmp('+e.id+')">Remove</button>']),[3,4,5,6])+'</div>'+
+ '<div class="g2"><div class="card"><h3>Add employee</h3><div class="row"><label>Name<input id="en"></label><label>Role<input id="er"></label><label>Branch<select id="eb"><option>Entebbe</option></select></label><label>Gross salary<input id="eg" type="number" style="width:120px"></label><button class="b" onclick="addEmp()">Add</button></div></div>'+
+ '<div class="card"><h3>Run payroll (posts to Finance)</h3><div class="row"><label>Month<input id="pmn" type="month" value="'+m+'"></label><button class="b" onclick="runPayroll()">Run &amp; post</button></div><p class="k">PAYE bands: 0–235k nil · 10% to 335k · 20% to 410k · 30% above · +10% over UGX 10M. NSSF: 5% employee, 10% employer. Verify rates with URA/NSSF.</p></div></div>'+
+ (pr?'<div class="card" style="margin-top:12px"><h3>Payslips — '+pr.month+'</h3>'+tbl(['Employee','Gross','PAYE','NSSF emp','NSSF employer','Net pay'],pr.slips.map(s=>[esc(s.name),fmt(s.gross),fmt(s.paye),fmt(s.nssfE),fmt(s.nssfR),'<b>'+fmt(s.net)+'</b>']),[1,2,3,4,5])+'</div>':'')}
+function render(){$('#nav').innerHTML=Object.keys(TABS).map(k=>'<button class="'+(k==tab?'on':'')+'" onclick="tab=\''+k+'\';render()">'+TABS[k]+'</button>').join('');
+ $('#app').innerHTML={dash,inv,sales,fin,hr}[tab]();save()}
+load();render();
+</script></body></html>
